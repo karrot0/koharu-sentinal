@@ -1,0 +1,17 @@
+{
+  "name": "koharu-sentinal",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "discord.js": "^14.21.0"
+  }
+}

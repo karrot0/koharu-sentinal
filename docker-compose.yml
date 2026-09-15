@@ -1,0 +1,13 @@
+services:
+  koharu-sentinal:
+    build: .
+    image: koharu-sentinal:latest
+    container_name: koharu-sentinal
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
