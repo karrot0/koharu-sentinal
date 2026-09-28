@@ -1,4 +1,4 @@
-import { PermissionFlagsBits, SnowflakeUtil } from 'discord.js';
+import { MessageFlags, PermissionFlagsBits, SnowflakeUtil } from 'discord.js';
 import { config } from './config.js';
 import { log } from './logger.js';
 
@@ -7,6 +7,8 @@ const REQUIRED_CHANNEL_PERMISSIONS = [
   PermissionFlagsBits.ReadMessageHistory,
   PermissionFlagsBits.ManageMessages,
 ];
+
+const APPEAL_CHANNEL_PERMISSIONS = [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages];
 
 const CHANNEL_CONCURRENCY = 5;
 const MAX_PAGES_PER_CHANNEL = 10;
@@ -31,6 +33,34 @@ const assignBannedRole = async (guild, userId) => {
 
   await member.roles.add(config.bannedRoleId, 'MrBeast scam detected');
   return true;
+};
+
+const announceBan = async (guild, user, reason) => {
+  if (!config.appealChannelId) return;
+
+  const channel = await guild.channels.fetch(config.appealChannelId).catch(() => null);
+  if (!channel?.isTextBased()) {
+    log.warn(`Appeal channel ${config.appealChannelId} was not found in ${guild.name}`);
+    return;
+  }
+
+  const me = guild.members.me ?? (await guild.members.fetchMe());
+  if (!channel.permissionsFor(me)?.has(APPEAL_CHANNEL_PERMISSIONS)) {
+    log.warn(`Cannot post in appeal channel #${channel.name}, missing View Channel or Send Messages`);
+    return;
+  }
+
+  const content = [
+    `<@${user.id}> you have been banned.`,
+    `**Reason:** ${reason.notice}`,
+    'Your messages from the last hour were removed. If you believe this was a mistake, appeal in this channel and a moderator will review it.',
+  ].join('\n');
+
+  await channel.send({
+    content,
+    allowedMentions: { users: [user.id] },
+    flags: MessageFlags.SuppressEmbeds,
+  });
 };
 
 const purgeChannel = async (channel, userId, since) => {
@@ -88,7 +118,7 @@ export const handleScam = async (message, reason) => {
   recentlyActioned.add(key);
   setTimeout(() => recentlyActioned.delete(key), config.actionCooldownMs).unref();
 
-  log.info(`Actioning ${author.tag} (${author.id}) in ${guild.name}: ${reason}`);
+  log.info(`Actioning ${author.tag} (${author.id}) in ${guild.name}: ${reason.log}`);
 
   try {
     const assigned = await assignBannedRole(guild, author.id);
@@ -96,6 +126,13 @@ export const handleScam = async (message, reason) => {
     else log.warn(`${author.tag} is no longer in ${guild.name}, skipped role assignment`);
   } catch (error) {
     log.error(`Failed to assign banned role to ${author.tag}`, error);
+  }
+
+  try {
+    await announceBan(guild, author, reason);
+    log.info(`Posted the ban notice for ${author.tag} in the appeal channel`);
+  } catch (error) {
+    log.error(`Failed to post the ban notice for ${author.tag}`, error);
   }
 
   try {
@@ -123,6 +160,22 @@ export const verifySetup = async (guild) => {
   if (!me.permissions.has(PermissionFlagsBits.ManageMessages)) {
     log.warn(`Missing Manage Messages permission in ${guild.name}`);
   }
+};
+
+export const verifyAppealChannel = async (client) => {
+  const channel = await client.channels.fetch(config.appealChannelId).catch(() => null);
+  if (!channel?.guild) {
+    log.warn(`Appeal channel ${config.appealChannelId} was not found or the bot cannot see it`);
+    return;
+  }
+
+  const me = channel.guild.members.me ?? (await channel.guild.members.fetchMe());
+  if (!channel.permissionsFor(me)?.has(APPEAL_CHANNEL_PERMISSIONS)) {
+    log.warn(`Missing View Channel or Send Messages in appeal channel #${channel.name}`);
+    return;
+  }
+
+  log.info(`Appeal channel active: #${channel.name} in ${channel.guild.name}`);
 };
 
 export const verifyTrapChannel = async (client) => {

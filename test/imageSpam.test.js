@@ -19,7 +19,10 @@ const scamSet = [image(201_311), image(188_420), image(240_002), image(199_871)]
 test('flags the same four images posted in a second channel', () => {
   const detector = createImageSpamDetector(settings);
   assert.equal(detector.check(post({ channel: 'c1', images: scamSet })), null);
-  assert.match(detector.check(post({ channel: 'c2', images: scamSet })), /2 channels/);
+  assert.deepEqual(detector.check(post({ channel: 'c2', images: scamSet })), {
+    images: 4,
+    channelIds: ['c2', 'c1'],
+  });
 });
 
 test('flags shuffled images across channels', () => {

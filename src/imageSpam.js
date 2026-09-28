@@ -50,9 +50,7 @@ export const createImageSpamDetector = ({ minImages, minChannels, windowMs }) =>
     history.push({ channelId: message.channelId, timestamp: now, fingerprints });
     posts.set(key, history.slice(-MAX_POSTS_PER_USER));
 
-    return channels.size >= minChannels
-      ? `same ${fingerprints.size} images posted in ${channels.size} channels`
-      : null;
+    return channels.size >= minChannels ? { images: fingerprints.size, channelIds: [...channels] } : null;
   };
 
   return { check };

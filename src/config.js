@@ -9,6 +9,8 @@ export const config = Object.freeze({
   token,
   bannedRoleId: process.env.BANNED_ROLE_ID?.trim(),
   trapChannelId: process.env.TRAP_CHANNEL_ID?.trim(),
+  appealChannelId: process.env.APPEAL_CHANNEL_ID?.trim(),
+  stateFile: process.env.STATE_FILE?.trim() || 'data/state.json',
   purgeWindowMs: 60 * 60 * 1000,
   actionCooldownMs: 60 * 1000,
   imageSpam: Object.freeze({
