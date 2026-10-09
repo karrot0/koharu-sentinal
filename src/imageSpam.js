@@ -47,11 +47,21 @@ export const createImageSpamDetector = ({ minImages, minChannels, windowMs }) =>
       }
     }
 
-    history.push({ channelId: message.channelId, timestamp: now, fingerprints });
+    history.push({ id: message.id, channelId: message.channelId, timestamp: now, fingerprints });
     posts.set(key, history.slice(-MAX_POSTS_PER_USER));
 
     return channels.size >= minChannels ? { images: fingerprints.size, channelIds: [...channels] } : null;
   };
 
-  return { check };
+  const forget = (messageId) => {
+    for (const [key, history] of posts) {
+      const kept = history.filter((post) => post.id !== messageId);
+      if (kept.length === history.length) continue;
+      if (kept.length) posts.set(key, kept);
+      else posts.delete(key);
+      return;
+    }
+  };
+
+  return { check, forget };
 };

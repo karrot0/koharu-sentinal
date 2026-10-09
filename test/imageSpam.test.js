@@ -6,7 +6,8 @@ const settings = { minImages: 2, minChannels: 2, windowMs: 10 * 60 * 1000 };
 
 const image = (size, width = 1080, height = 1350) => ({ size, width, height });
 
-const post = ({ user = 'u1', channel, images, at = Date.now() }) => ({
+const post = ({ id, user = 'u1', channel, images, at = Date.now() }) => ({
+  id,
   guildId: 'g1',
   author: { id: user },
   channelId: channel,
@@ -60,6 +61,27 @@ test('ignores reposts outside the time window', () => {
   const start = Date.now();
   detector.check(post({ channel: 'c1', images: scamSet, at: start }));
   assert.equal(detector.check(post({ channel: 'c2', images: scamSet, at: start + settings.windowMs + 1 })), null);
+});
+
+test('ignores a post that was deleted and reposted in another channel', () => {
+  const detector = createImageSpamDetector(settings);
+  detector.check(post({ id: 'm1', channel: 'c1', images: scamSet }));
+  detector.forget('m1');
+  assert.equal(detector.check(post({ id: 'm2', channel: 'c2', images: scamSet })), null);
+});
+
+test('still flags when only an unrelated post was deleted', () => {
+  const detector = createImageSpamDetector(settings);
+  detector.check(post({ id: 'm1', channel: 'c1', images: scamSet }));
+  detector.forget('other');
+  assert.ok(detector.check(post({ id: 'm2', channel: 'c2', images: scamSet })));
+});
+
+test('with a three channel minimum, flags only on the third channel', () => {
+  const detector = createImageSpamDetector({ ...settings, minChannels: 3 });
+  assert.equal(detector.check(post({ id: 'm1', channel: 'c1', images: scamSet })), null);
+  assert.equal(detector.check(post({ id: 'm2', channel: 'c2', images: scamSet })), null);
+  assert.deepEqual(detector.check(post({ id: 'm3', channel: 'c3', images: scamSet }))?.channelIds, ['c3', 'c1', 'c2']);
 });
 
 test('ignores non-image attachments', () => {

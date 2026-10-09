@@ -1,4 +1,4 @@
-import { Client, Events, GatewayIntentBits } from 'discord.js';
+import { Client, Events, GatewayIntentBits, Partials } from 'discord.js';
 import { config } from './config.js';
 import { createImageSpamDetector } from './imageSpam.js';
 import { log } from './logger.js';
@@ -12,6 +12,7 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
   ],
+  partials: [Partials.Message],
   allowedMentions: { parse: [] },
 });
 
@@ -48,6 +49,10 @@ client.on(Events.GuildCreate, (guild) => verifySetup(guild).catch((error) => log
 client.on(Events.MessageCreate, (message) =>
   inspect(message).catch((error) => log.error('Unhandled error while inspecting message', error)),
 );
+client.on(Events.MessageDelete, (message) => imageSpam.forget(message.id));
+client.on(Events.MessageBulkDelete, (messages) => {
+  for (const id of messages.keys()) imageSpam.forget(id);
+});
 client.on(Events.Error, (error) => log.error('Client error', error));
 
 const shutdown = async (signal) => {

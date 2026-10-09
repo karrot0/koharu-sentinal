@@ -15,7 +15,7 @@ export const config = Object.freeze({
   actionCooldownMs: 60 * 1000,
   imageSpam: Object.freeze({
     minImages: 2,
-    minChannels: 2,
+    minChannels: 3,
     windowMs: 10 * 60 * 1000,
   }),
 });
